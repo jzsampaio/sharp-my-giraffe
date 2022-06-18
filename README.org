@@ -1,0 +1,46 @@
+#+TITLE: Sharp My Giraffe
+
+Project created for practicing constructing web apps with F#'s Giraffe
+library.
+
+* Random Notes
+
+** Motivations for Giraffe
+
+From [[https://dusted.codes/functional-aspnet-core][The blog post "Functional ASP.NET Core from 2017"]], If we have
+Suave, why would we like Giraffe?
+
+- Performance
+- Security
+- Laziness
+- Community
+- Impatience
+- Fear of missing out
+- Support
+
+** On Dependency Injection and FP
+
+#+begin_quote
+Automatic dependency resolution is not really a thing in functional
+programming, because dependencies are normally functions and not
+objects. Functions can be passed around or partially applied which
+usually makes object oriented dependency management obsolete.
+#+end_quote
+
+  
+* Things To Checkout Foreign
+
+- [ ] static files
+- [ ] authentication
+- [ ] authorization
+- [ ] security
+- [ ] the flexibility of the config system
+- [ ] logging
+- [ ] simply being able to retrieve information from the current
+  hosting environment
+  
+* Question
+
+** What is Kestrel?
+
+** 
