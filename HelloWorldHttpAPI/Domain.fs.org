@@ -1,0 +1,116 @@
+#+Title: Domain Analysis for My Applied
+
+On this document I analyze the domain for my App.
+
+* Module Declaration
+
+#+begin_src fsharp :tangle "Domain.fs"
+  module HelloWorldHttpAPI.Domain
+
+  open System
+#+end_src
+
+* App Errors
+
+#+begin_src fsharp :tangle "Domain.fs"
+  type AuthError =
+      | InvalidCredentials
+      | NotAuthorized
+
+  type AppError =
+      | AuthError of AuthError
+      | UserAlreadyExists
+      | RoutineAlreadyExists
+      | RoutineNotFound
+      | UserNotFound
+
+  type AppResonse<'T> = Result<'T, AppError>
+#+end_src
+
+* User
+
+Before accessing the app, a user must be logged in.
+
+#+begin_src fsharp :tangle "Domain.fs"
+  type AppUser = {
+      FirstName: string
+      LastName: string
+      Email: string // Primary Key
+      CreatedAt: DateTime
+  }
+
+  type Session = {
+      UserEmail: string
+      LoggedAt: DateTime
+      TimeToLive: TimeSpan
+  }
+
+  type Role =
+      | Admin
+      | Staff
+      | Athlete
+
+  type Permission =
+      | CanManageWorkoutData
+      | CanManageUsers
+
+  type AuthenticationService = {
+      login: (email: string) -> (password: string) -> AppResponse<Session, AppError>
+      logout: Session -> AppResonse<unit, AppError>
+  }
+
+  type AuthorizationService = {
+      hasPermission: Permission -> (email: string) -> AppResponse<bool, AppError>
+      grantRole: Role -> (email: string) -> AppResponse<bool, AppError>
+      removeRole: Role -> (email: string) -> AppResponse<bool, AppError>
+      grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool, AppError>
+  }
+
+#+end_src
+
+* Workout Routine
+
+This is an app for workout routines. A workout is a sequence of
+exercises. Each exercise has a name, a number of sets and reps.
+
+#+begin_src fsharp :tangle "Domain.fs"
+
+  type WorkoutExercise = {
+      Name: string
+      Reps: int
+      Sets: int
+  }
+
+  type Workout = {
+      Routine: WorkoutExercise[]
+  }
+#+end_src
+
+* User Service
+
+#+begin_src fsharp :tangle "Domain.fs"
+  type CreateUserRequest = {
+        FirstName: string
+        LastName: string
+        Email: string
+  }
+
+  type DeleteUserRequest = { Email: string }
+
+  type UserService = {
+      getUser: string -> Result<AppUser, AppError>
+      deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
+      listUsers: unit -> Result<AppUser list, AppError>
+      createUser: CreateUserRequest -> Result<AppUser, AppError>
+  }
+#+end_src
+
+* Workout Routine Service
+
+#+begin_src fsharp :tangle "Domain.fs"
+  type UserRoutineService = {
+      getRoutines (userEmail: string) : WorkoutExercise[]
+      getTodaysRoutine (userEmail: string): WorkoutExercise
+      addRoutine (userEmail: string) (routine: WorkoutExercise) : Result<unit, AppError>
+  }
+#+end_src
