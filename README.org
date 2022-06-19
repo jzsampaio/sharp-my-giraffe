@@ -27,7 +27,114 @@ objects. Functions can be passed around or partially applied which
 usually makes object oriented dependency management obsolete.
 #+end_quote
 
-  
+** Fundamental Abstractions
+
+#+begin_src fsharp
+type HttpFuncResult = Task<HttpContext option>
+type HttpFunc = HttpContext -> HttpFuncResult
+type HttpHandler = HttpFunc -> HttpContext -> HttpFuncResult
+#+end_src
+
+Unwraping the definitions we have:
+
+#+begin_src fsharp
+type HttpHandler = (HttpContext -> Task<HttpContext option>) -> HttpContext -> Task<HttpContext option>
+#+end_src
+
+Let's play with a minimalistic HttpContext and see what an HttpHandler
+looks like.
+
+#+begin_src fsharp :results value
+  type HttpContext = {
+      Headers: string list;
+      Url: string;
+      Path: string;
+      Response: string option;
+  }
+
+  let route targetPath next ctx =
+      match ctx.Path with
+          | p when p = targetPath  -> next ctx
+          | _ -> None
+
+          
+
+  let ctx = {
+      Headers = ["content:html"]
+      Url = "localhost:8080"
+      Path = "/resource2"
+      Response = None
+  }
+
+  ctx
+  |> route "/resource" (fun ctx ->
+                            printfn "%A" ctx
+                            Some ({ ctx with Response = Some "[]" })
+                        )
+#+end_src
+
+#+RESULTS:
+#+begin_example
+type HttpContext =
+  {
+    Headers: string list
+    Url: string
+    Path: string
+    Response: string option
+  }
+val route:
+  targetPath: string -> next: (HttpContext -> 'a option) -> ctx: HttpContext
+    -> 'a option
+val ctx: HttpContext = { Headers = ["content:html"]
+                         Url = "localhost:8080"
+                         Path = "/resource2"
+                         Response = None }
+val it: HttpContext option = None
+#+end_example
+
+** Returning from an ~HttpHandler~
+
+There are three possibilities:
+
+- return ~(Some ctx)~: indicating the HttpHandler fully processed the
+  request and decided no-one else should process it.
+- return ~None~: deciding to kill the current chain of processing, but
+  allowing that other Aspnet midlewars to process the request
+- return ~Some (next ctx)~: pass the ball further in the processing
+  chain
+
+** Mind the ~warbler~ operator
+
+The following helper function is useful when you need your code to
+evaluate again on every call.
+
+#+begin_src fsharp
+// ('a -> 'a -> 'b) -> 'a -> 'b
+let warbler f a = f a a
+#+end_src
+
+** Routing
+
+Giraffe has many routing handlers.
+
+| Function          | Description                                                  |
+|-------------------+--------------------------------------------------------------|
+| route             |                                                              |
+| routeCi           |                                                              |
+| routex            |                                                              |
+| routexp           | regex + pass capture groups forward                          |
+| routeCix          | case insensitive regex                                       |
+| routef            | capture string parameters on url                             |
+| routeCif          | same as routef, but case insensitive                         |
+| routeBind         | route url parameters to record type                          |
+| routeStartsWith   | mateches the beginning of a route                            |
+| routeStartsWithCi | same as before, but case insensitive                         |
+| subRoute          | similar to souteStartsWith, but substracts the matched route |
+| subRouteCi        | same as before, but case insensitve                          |
+| subRoutef         | subroute + capture url parameters                            |
+| routePorts        | route based on port of the http request                      |
+
+
 * Things To Checkout Foreign
 
 - [ ] static files

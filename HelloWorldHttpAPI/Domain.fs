@@ -13,69 +13,88 @@ type AppError =
     | RoutineNotFound
     | UserNotFound
 
-type AppResonse<'T> = Result<'T, AppError>
+type AppResponse<'T> = Result<'T, AppError>
 
-type AppUser = {
-    FirstName: string
-    LastName: string
-    Email: string // Primary Key
-    CreatedAt: DateTime
-}
+module AppUser =
 
-type Session = {
-    UserEmail: string
-    LoggedAt: DateTime
-    TimeToLive: TimeSpan
-}
+    type Email = string
 
-type Role =
-    | Admin
-    | Staff
-    | Athlete
+    type AppUser = {
+        FirstName: string
+        LastName: string
+        Email: string // Primary Key
+        CreatedAt: DateTime
+    }
 
-type Permission =
-    | CanManageWorkoutData
-    | CanManageUsers
+    type Session = {
+        UserEmail: string
+        LoggedAt: DateTime
+        TimeToLive: TimeSpan
+    }
 
-type AuthenticationService = {
-    login: (email: string) -> (password: string) -> AppResponse<Session, AppError>
-    logout: Session -> AppResonse<unit, AppError>
-}
+module Authentication =
 
-type AuthorizationService = {
-    hasPermission: Permission -> (email: string) -> AppResponse<bool, AppError>
-    grantRole: Role -> (email: string) -> AppResponse<bool, AppError>
-    removeRole: Role -> (email: string) -> AppResponse<bool, AppError>
-    grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool, AppError>
-}
+    open AppUser
 
-type WorkoutExercise = {
-    Name: string
-    Reps: int
-    Sets: int
-}
+    type Password = string
 
-type Workout = {
-    Routine: WorkoutExercise[]
-}
+    type AuthenticationService = {
+        login: Email -> Password -> AppResponse<Session>
+        logout: Session -> AppResponse<unit>
+    }
 
-type CreateUserRequest = {
-      FirstName: string
-      LastName: string
-      Email: string
-}
+module Authorization =
 
-type DeleteUserRequest = { Email: string }
+    open AppUser
 
-type UserService = {
-    getUser: string -> Result<AppUser, AppError>
-    deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
-    listUsers: unit -> Result<AppUser list, AppError>
-    createUser: CreateUserRequest -> Result<AppUser, AppError>
-}
+    type Role =
+        | Admin
+        | Staff
+        | Athlete
 
-type UserRoutineService = {
-    getRoutines (userEmail: string) : WorkoutExercise[]
-    getTodaysRoutine (userEmail: string): WorkoutExercise
-    addRoutine (userEmail: string) (routine: WorkoutExercise) : Result<unit, AppError>
-}
+    type Permission =
+        | CanManageWorkoutData
+        | CanManageUsers
+
+
+    type AuthorizationService = {
+        hasPermission: Permission -> Email -> AppResponse<bool>
+        grantRole: Role -> Email -> AppResponse<bool>
+        removeRole: Role -> Email -> AppResponse<bool>
+        grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
+    }
+
+module Workout =
+    type WorkoutExercise = {
+        Name: string
+        Reps: int
+        Sets: int
+    }
+
+    type Workout = {
+        Routine: WorkoutExercise[]
+    }
+
+module DomainService =
+    open Workout
+    open AppUser
+
+    type CreateUserRequest = {
+          FirstName: string
+          LastName: string
+          Email: string
+    }
+
+    type DeleteUserRequest = { Email: string }
+
+    type UserService = {
+        getUser: string -> Result<AppUser, AppError>
+        deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
+        listUsers: unit -> Result<AppUser list, AppError>
+        createUser: CreateUserRequest -> Result<AppUser, AppError>
+    }
+    type UserRoutineService = {
+        getRoutines: Email -> WorkoutExercise[]
+        getTodaysRoutine: Email -> WorkoutExercise
+        addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
+    }
