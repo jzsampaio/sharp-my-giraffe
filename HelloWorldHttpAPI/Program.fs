@@ -23,16 +23,17 @@ let counter =
                         return! loop(n) }
         loop 0)
 
-let incrHandler next ctx = task {
-    counter.Post(Incr 1)
-    return Some ctx
-}
+let incrHandler = handleContext(
+    fun ctx -> task {
+        counter.Post(Incr 1)
+        return Some ctx
+    })
 
-let readHandler : HttpHandler =
-    fun next (ctx: HttpContext) -> task {
+let readHandler = handleContext(
+    fun ctx -> task {
         let s = counter.PostAndReply(fun c -> Fetch c)
         return! ctx.WriteJsonAsync s
-    }
+    })
     
 let webApp =
     choose [

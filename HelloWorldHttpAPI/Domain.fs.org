@@ -12,6 +12,8 @@ On this document I analyze the domain for my App.
 
 * App Errors
 
+Below are listed all possible application errors.
+
 #+begin_src fsharp :tangle "Domain.fs"
   type AuthError =
       | InvalidCredentials
@@ -24,8 +26,19 @@ On this document I analyze the domain for my App.
       | RoutineNotFound
       | UserNotFound
 
+#+end_src
+
+On this design, all functions that can produce errors are expected to
+return the following type.
+
+#+begin_src fsharp :tangle "Domain.fs"  
   type AppResponse<'T> = Result<'T, AppError>
 #+end_src
+
+With this approach, we can make uniform use for ~asyncresult~ around
+the code base. That is: given that all methods produce errors
+constrained to ~AppError~, we can uniformly bind results with ~let!~
+within and ~asyncresult~ CE.
 
 * User
 
@@ -36,20 +49,71 @@ Before accessing the app, a user must be logged in.
   module AppUser =
 
       type Email = string
+      type PersonName = string
     
       type AppUser = {
-          FirstName: string
-          LastName: string
-          Email: string // Primary Key
+          FirstName: PersonName
+          LastName: PersonName
+          Email: Email // Primary Key
           CreatedAt: DateTime
       }
     
       type Session = {
-          UserEmail: string
+          UserEmail: Email
           LoggedAt: DateTime
           TimeToLive: TimeSpan
       }
+#+end_src
 
+* Workout Routine
+
+This is an app for workout routines. A workout is a sequence of
+exercises. Each exercise has a name, a number of sets and reps.
+
+#+begin_src fsharp :tangle "Domain.fs"
+  module Workout =
+      type WorkoutExercise = {
+          Name: string
+          Reps: int
+          Sets: int
+      }
+    
+      type Workout = {
+          Routine: WorkoutExercise[]
+      }
+#+end_src
+
+* Domain Services
+
+#+begin_src fsharp :tangle "Domain.fs"
+  module Services =
+      open Workout
+      open AppUser
+
+      type CreateUserRequest = {
+            FirstName: string
+            LastName: string
+            Email: string
+      }
+    
+      type DeleteUserRequest = { Email: string }
+    
+      type UserService = {
+          getUser: string -> Result<AppUser, AppError>
+          deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
+          listUsers: unit -> Result<AppUser list, AppError>
+          createUser: CreateUserRequest -> Result<AppUser, AppError>
+      }
+      type UserRoutineService = {
+          getRoutines: Email -> WorkoutExercise[]
+          getTodaysRoutine: Email -> WorkoutExercise
+          addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
+      }
+#+end_src
+
+* Midleware Services
+
+#+begin_src fsharp :tangle "Domain.fs"
   module Authentication =
 
       open AppUser
@@ -74,56 +138,10 @@ Before accessing the app, a user must be logged in.
           | CanManageWorkoutData
           | CanManageUsers
     
-    
       type AuthorizationService = {
           hasPermission: Permission -> Email -> AppResponse<bool>
           grantRole: Role -> Email -> AppResponse<bool>
           removeRole: Role -> Email -> AppResponse<bool>
           grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
-      }
-#+end_src
-
-* Workout Routine
-
-This is an app for workout routines. A workout is a sequence of
-exercises. Each exercise has a name, a number of sets and reps.
-
-#+begin_src fsharp :tangle "Domain.fs"
-  module Workout =
-      type WorkoutExercise = {
-          Name: string
-          Reps: int
-          Sets: int
-      }
-    
-      type Workout = {
-          Routine: WorkoutExercise[]
-      }
-#+end_src
-
-* Domain Service
-#+begin_src fsharp :tangle "Domain.fs"
-  module DomainService =
-      open Workout
-      open AppUser
-
-      type CreateUserRequest = {
-            FirstName: string
-            LastName: string
-            Email: string
-      }
-    
-      type DeleteUserRequest = { Email: string }
-    
-      type UserService = {
-          getUser: string -> Result<AppUser, AppError>
-          deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
-          listUsers: unit -> Result<AppUser list, AppError>
-          createUser: CreateUserRequest -> Result<AppUser, AppError>
-      }
-      type UserRoutineService = {
-          getRoutines: Email -> WorkoutExercise[]
-          getTodaysRoutine: Email -> WorkoutExercise
-          addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
       }
 #+end_src

@@ -18,18 +18,54 @@ type AppResponse<'T> = Result<'T, AppError>
 module AppUser =
 
     type Email = string
+    type PersonName = string
 
     type AppUser = {
-        FirstName: string
-        LastName: string
-        Email: string // Primary Key
+        FirstName: PersonName
+        LastName: PersonName
+        Email: Email // Primary Key
         CreatedAt: DateTime
     }
 
     type Session = {
-        UserEmail: string
+        UserEmail: Email
         LoggedAt: DateTime
         TimeToLive: TimeSpan
+    }
+
+module Workout =
+    type WorkoutExercise = {
+        Name: string
+        Reps: int
+        Sets: int
+    }
+
+    type Workout = {
+        Routine: WorkoutExercise[]
+    }
+
+module Services =
+    open Workout
+    open AppUser
+
+    type CreateUserRequest = {
+          FirstName: string
+          LastName: string
+          Email: string
+    }
+
+    type DeleteUserRequest = { Email: string }
+
+    type UserService = {
+        getUser: string -> Result<AppUser, AppError>
+        deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
+        listUsers: unit -> Result<AppUser list, AppError>
+        createUser: CreateUserRequest -> Result<AppUser, AppError>
+    }
+    type UserRoutineService = {
+        getRoutines: Email -> WorkoutExercise[]
+        getTodaysRoutine: Email -> WorkoutExercise
+        addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
     }
 
 module Authentication =
@@ -56,45 +92,9 @@ module Authorization =
         | CanManageWorkoutData
         | CanManageUsers
 
-
     type AuthorizationService = {
         hasPermission: Permission -> Email -> AppResponse<bool>
         grantRole: Role -> Email -> AppResponse<bool>
         removeRole: Role -> Email -> AppResponse<bool>
         grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
-    }
-
-module Workout =
-    type WorkoutExercise = {
-        Name: string
-        Reps: int
-        Sets: int
-    }
-
-    type Workout = {
-        Routine: WorkoutExercise[]
-    }
-
-module DomainService =
-    open Workout
-    open AppUser
-
-    type CreateUserRequest = {
-          FirstName: string
-          LastName: string
-          Email: string
-    }
-
-    type DeleteUserRequest = { Email: string }
-
-    type UserService = {
-        getUser: string -> Result<AppUser, AppError>
-        deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
-        listUsers: unit -> Result<AppUser list, AppError>
-        createUser: CreateUserRequest -> Result<AppUser, AppError>
-    }
-    type UserRoutineService = {
-        getRoutines: Email -> WorkoutExercise[]
-        getTodaysRoutine: Email -> WorkoutExercise
-        addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
     }
