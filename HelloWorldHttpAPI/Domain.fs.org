@@ -1,6 +1,11 @@
 #+Title: Domain Analysis for My Application
+TODO set this variable to t: org-src-preserve-indentation
 
-On this document I analyze the domain for my App.
+This is an app for organizing my workout routine. The end goal is to
+have a mobile app that:
+
+- Keeps track of my exercises (# reps, sets, ...)
+- Predicts what exercise I will do next based on known policies
 
 * Module Declaration
 
@@ -31,7 +36,7 @@ Below are listed all possible application errors.
 On this design, all functions that can produce errors are expected to
 return the following type.
 
-#+begin_src fsharp :tangle "Domain.fs"  
+#+begin_src fsharp :tangle "Domain.fs"
   type AppResponse<'T> = Result<'T, AppError>
 #+end_src
 
@@ -44,20 +49,25 @@ within and ~asyncresult~ CE.
 
 Before accessing the app, a user must be logged in.
 
+On this project I will play with an identify provider such as Active
+Directory. The fact that a user has to authenticate is to be
+abstracted away, and the app should support multiple mechanisms for
+authentication (e.g.: gmail, github, ...).
+
 #+begin_src fsharp :tangle "Domain.fs"
 
   module AppUser =
 
       type Email = string
       type PersonName = string
-    
+
       type AppUser = {
           FirstName: PersonName
           LastName: PersonName
           Email: Email // Primary Key
           CreatedAt: DateTime
       }
-    
+
       type Session = {
           UserEmail: Email
           LoggedAt: DateTime
@@ -72,16 +82,81 @@ exercises. Each exercise has a name, a number of sets and reps.
 
 #+begin_src fsharp :tangle "Domain.fs"
   module Workout =
-      type WorkoutExercise = {
+
+      type RepCount = int
+
+      type ExerciseWeightLevel =
+          | OneRM
+          | ThreeRM
+          | FiveRM
+          | EightRM
+
+      type WeightValue =
+          | Kilogram of double
+          | Pounds of double
+
+      type Exercise = {
           Name: string
-          Reps: int
-          Sets: int
+          Description: string
+          VideoTutorial: string option
       }
-    
-      type Workout = {
-          Routine: WorkoutExercise[]
+
+      type Comment = string
+
+      type ExerciseSetState =
+          | NotTried
+          | Completed
+          | Failed of Comment option
+
+      type ExerciseSet = {
+          Reps: RepCount
+          TargetWeight: WeightValue
+          WeightLevel: WeightLevel
+          Status: ExerciseSetState
+      }
+
+      // Example: 3 sets: 5 reps of 5RM, 4 reps of 3RM, 1 rep of 1RM
+      type ExerciseSetup = {
+          Exercise: Exercise
+          Sets: ExerciseSet list
+          Comment: Comment option
+      }
+
+      // The workout to be done on a given day
+      type WorkoutSession = {
+          Routine: ExerciseSetup list
+          DateTime: DateTime
+          Comment: Comment option
+      }
+
+      type UserWorkoutHistory = WorkoutSession list
+
+      type WorkoutSplit =
+          | PushPull
+          | Custom of Exercise list list
+
+      type Cycle =
+          | Weekly of int // number of day a week
+          | RoundRobin of int // number of days in cycle
+
+      type ExercisePolicy =
+          | ThreeOfFive
+          | FiveThreeOneSingleSetCycle
+          | ThreeOfEight
+          | Custom of (ExerciseWeightLevel * RepCount) list
+
+      type WorkoutPlan = {
+          CycleType: Cycle
+          Exercises: (Exercise * ExercisePolicy) list
       }
 #+end_src
+
+#+RESULTS:
+: WeightLevel: WeightLevel
+:   ---------------------^^^^^^^^^^^
+:
+: /home/jz/SideProjects/sharp-my-giraffe/HelloWorldHttpAPI/stdin(31,22): error FS0039: The type 'WeightLevel' is not defined. Maybe you want one of the following:
+:    WeightValue
 
 * Domain Services
 
@@ -95,9 +170,9 @@ exercises. Each exercise has a name, a number of sets and reps.
             LastName: string
             Email: string
       }
-    
+
       type DeleteUserRequest = { Email: string }
-    
+
       type UserService = {
           getUser: string -> Result<AppUser, AppError>
           deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
@@ -128,16 +203,16 @@ exercises. Each exercise has a name, a number of sets and reps.
   module Authorization =
 
       open AppUser
-    
+
       type Role =
           | Admin
           | Staff
           | Athlete
-    
+
       type Permission =
           | CanManageWorkoutData
           | CanManageUsers
-    
+
       type AuthorizationService = {
           hasPermission: Permission -> Email -> AppResponse<bool>
           grantRole: Role -> Email -> AppResponse<bool>

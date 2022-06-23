@@ -34,14 +34,72 @@ module AppUser =
     }
 
 module Workout =
-    type WorkoutExercise = {
+
+    type RepCount = int
+
+    type ExerciseWeightLevel =
+        | OneRM
+        | ThreeRM
+        | FiveRM
+        | EightRM
+
+    type WeightValue =
+        | Kilogram of double
+        | Pounds of double
+
+    type Exercise = {
         Name: string
-        Reps: int
-        Sets: int
+        Description: string
+        VideoTutorial: string option
     }
 
-    type Workout = {
-        Routine: WorkoutExercise[]
+    type Comment = string
+
+    type ExerciseSetState =
+        | NotTried
+        | Completed
+        | Failed of Comment option
+
+    type ExerciseSet = {
+        Reps: RepCount
+        TargetWeight: WeightValue
+        WeightLevel: WeightLevel
+        Status: ExerciseSetState
+    }
+
+    // Example: 3 sets: 5 reps of 5RM, 4 reps of 3RM, 1 rep of 1RM
+    type ExerciseSetup = {
+        Exercise: Exercise
+        Sets: ExerciseSet list
+        Comment: Comment option
+    }
+
+    // The workout to be done on a given day
+    type WorkoutSession = {
+        Routine: ExerciseSetup list
+        DateTime: DateTime
+        Comment: Comment option
+    }
+
+    type UserWorkoutHistory = WorkoutSession list
+
+    type WorkoutSplit =
+        | PushPull
+        | Custom of Exercise list list
+
+    type Cycle =
+        | Weekly of int // number of day a week
+        | RoundRobin of int // number of days in cycle
+
+    type ExercisePolicy =
+        | ThreeOfFive
+        | FiveThreeOneSingleSetCycle
+        | ThreeOfEight
+        | Custom of (ExerciseWeightLevel * RepCount) list
+
+    type WorkoutPlan = {
+        CycleType: Cycle
+        Exercises: (Exercise * ExercisePolicy) list
     }
 
 module Services =
