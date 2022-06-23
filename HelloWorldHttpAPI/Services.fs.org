@@ -1,0 +1,92 @@
+#+TITLE: Application Services
+
+This files describes the services that must be implemented one way of
+another for the web app to work.
+
+Think of this file as a signature file, but build w/ org-mode.
+
+#+begin_src fsharp :tangle "Services.fs"
+module HelloWorldHttpAPI.Services
+
+open System
+open HelloWorldHttpAPI.Domain
+#+end_src
+
+* Domain Services
+
+This section is dedicated to services that manipulate the key domain
+entities.
+
+#+begin_src fsharp :tangle "Services.fs"
+module DomainServices =
+
+    open Workout
+    open AppUser
+
+    type CreateUserRequest = {
+          FirstName: string
+          LastName: string
+          Email: string
+    }
+
+    type DeleteUserRequest = { Email: string }
+
+    type UserService = {
+        getUser: string -> AppResponse<AppUser>
+        deleteUser: DeleteUserRequest -> AppResponse<AppUser>
+        listUsers: unit -> AppResponse<AppUser list>
+        createUser: CreateUserRequest -> AppResponse<AppUser>
+    }
+
+    type RoutineService = {
+        getRoutines: Email -> AppResponse<WorkoutSession list>
+        getTodaysRoutine: Email -> AppResponse<WorkoutSession>
+        addRoutine: Email -> WorkoutSession -> AppResponse<unit>
+    }
+
+    type ExerciseController = {
+        get: unit -> AppResponse<Exercise list>
+        getFromUser: Email -> AppResponse<Exercise list>
+        add: Exercise -> AppResponse<int>
+        addToUser: Exercise -> Email -> AppResponse<int>
+        delete: Exercise -> AppResponse<int>
+        deleteFromUser: Exercise -> Email -> AppResponse<int>
+    }
+#+end_src
+
+* Midleware Services
+
+This section is dedicated to auxiliary services.
+
+#+begin_src fsharp :tangle "Services.fs"
+module Authentication =
+
+    open AppUser
+
+    type Password = string
+
+    type AuthenticationService = {
+        login: Email -> Password -> AppResponse<Session>
+        logout: Session -> AppResponse<unit>
+    }
+
+module Authorization =
+
+    open AppUser
+
+    type Role =
+        | Admin
+        | Staff
+        | Athlete
+
+    type Permission =
+        | CanManageWorkoutData
+        | CanManageUsers
+
+    type AuthorizationService = {
+        hasPermission: Permission -> Email -> AppResponse<bool>
+        grantRole: Role -> Email -> AppResponse<bool>
+        removeRole: Role -> Email -> AppResponse<bool>
+        grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
+    }
+#+end_src

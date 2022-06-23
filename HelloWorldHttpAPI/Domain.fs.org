@@ -1,5 +1,4 @@
 #+Title: Domain Analysis for My Application
-TODO set this variable to t: org-src-preserve-indentation
 
 This is an app for organizing my workout routine. The end goal is to
 have a mobile app that:
@@ -10,9 +9,9 @@ have a mobile app that:
 * Module Declaration
 
 #+begin_src fsharp :tangle "Domain.fs"
-  module HelloWorldHttpAPI.Domain
+module HelloWorldHttpAPI.Domain
 
-  open System
+open System
 #+end_src
 
 * App Errors
@@ -20,24 +19,23 @@ have a mobile app that:
 Below are listed all possible application errors.
 
 #+begin_src fsharp :tangle "Domain.fs"
-  type AuthError =
-      | InvalidCredentials
-      | NotAuthorized
+type AuthError =
+    | InvalidCredentials
+    | NotAuthorized
 
-  type AppError =
-      | AuthError of AuthError
-      | UserAlreadyExists
-      | RoutineAlreadyExists
-      | RoutineNotFound
-      | UserNotFound
-
+type AppError =
+    | AuthError of AuthError
+    | UserAlreadyExists
+    | RoutineAlreadyExists
+    | RoutineNotFound
+    | UserNotFound
 #+end_src
 
 On this design, all functions that can produce errors are expected to
 return the following type.
 
 #+begin_src fsharp :tangle "Domain.fs"
-  type AppResponse<'T> = Result<'T, AppError>
+type AppResponse<'T> = Async<Result<'T, AppError>>
 #+end_src
 
 With this approach, we can make uniform use for ~asyncresult~ around
@@ -56,23 +54,30 @@ authentication (e.g.: gmail, github, ...).
 
 #+begin_src fsharp :tangle "Domain.fs"
 
-  module AppUser =
+module AppUser =
 
-      type Email = string
-      type PersonName = string
+    type Email = string
+    type PersonName = string
+    type ThemePreference =
+        | White
+        | Dark
+    type WeightUnit = | Kilogram | Pound
 
-      type AppUser = {
-          FirstName: PersonName
-          LastName: PersonName
-          Email: Email // Primary Key
-          CreatedAt: DateTime
-      }
+    type AppUser = {
+        FirstName: PersonName
+        LastName: PersonName
+        Email: Email // Primary Key
+        CreatedAt: DateTime
+        Birthdate: DateTime
+        ThemePreference: ThemePreference
+        WeightUnitPreference: WeightUnit
+    }
 
-      type Session = {
-          UserEmail: Email
-          LoggedAt: DateTime
-          TimeToLive: TimeSpan
-      }
+    type Session = {
+        UserEmail: Email
+        LoggedAt: DateTime
+        TimeToLive: TimeSpan
+    }
 #+end_src
 
 * Workout Routine
@@ -81,142 +86,89 @@ This is an app for workout routines. A workout is a sequence of
 exercises. Each exercise has a name, a number of sets and reps.
 
 #+begin_src fsharp :tangle "Domain.fs"
-  module Workout =
+module Workout =
+    open System
 
-      type RepCount = int
+    type RepCount = int
 
-      type ExerciseWeightLevel =
-          | OneRM
-          | ThreeRM
-          | FiveRM
-          | EightRM
+    type ExerciseWeightLevel =
+        | OneRM
+        | ThreeRM
+        | FiveRM
+        | EightRM
 
-      type WeightValue =
-          | Kilogram of double
-          | Pounds of double
+    type WeightValue =
+        | Kilogram of double
+        | Pounds of double
 
-      type Exercise = {
-          Name: string
-          Description: string
-          VideoTutorial: string option
-      }
+    type Exercise = {
+        Name: string
+        Description: string
+        VideoTutorial: string option
+    }
 
-      type Comment = string
+    type AppExerciseDatabase = Exercise list
 
-      type ExerciseSetState =
-          | NotTried
-          | Completed
-          | Failed of Comment option
+    type Comment = string
+    type Video = string // TODO
+    type Picture = string // TODO
 
-      type ExerciseSet = {
-          Reps: RepCount
-          TargetWeight: WeightValue
-          WeightLevel: WeightLevel
-          Status: ExerciseSetState
-      }
+    type Attachment =
+        | Comment of Comment
+        | Video of Video
+        | Picture of Picture
 
-      // Example: 3 sets: 5 reps of 5RM, 4 reps of 3RM, 1 rep of 1RM
-      type ExerciseSetup = {
-          Exercise: Exercise
-          Sets: ExerciseSet list
-          Comment: Comment option
-      }
+    type ExerciseSetState =
+        | NotTried
+        | Completed
+        | Failed of Comment option
 
-      // The workout to be done on a given day
-      type WorkoutSession = {
-          Routine: ExerciseSetup list
-          DateTime: DateTime
-          Comment: Comment option
-      }
+    type ExerciseSet = {
+        Reps: RepCount
+        TargetWeight: WeightValue
+        WeightLevel: ExerciseWeightLevel
+        Status: ExerciseSetState
+        Attachments: Attachment list
+    }
 
-      type UserWorkoutHistory = WorkoutSession list
+    // Example: 3 sets: 5 reps of 5RM, 4 reps of 3RM, 1 rep of 1RM
+    type ExerciseSetup = {
+        Exercise: Exercise
+        Sets: ExerciseSet list
+        Comment: Comment option
+    }
 
-      type WorkoutSplit =
-          | PushPull
-          | Custom of Exercise list list
+    // The workout to be done on a given day
+    type WorkoutSession = {
+        Routine: ExerciseSetup list
+        DateTime: DateTime
+        Comment: Comment option
+    }
 
-      type Cycle =
-          | Weekly of int // number of day a week
-          | RoundRobin of int // number of days in cycle
+    type UserWorkoutHistory = WorkoutSession list
 
-      type ExercisePolicy =
-          | ThreeOfFive
-          | FiveThreeOneSingleSetCycle
-          | ThreeOfEight
-          | Custom of (ExerciseWeightLevel * RepCount) list
+    type WorkoutSplit =
+        | PushPull
+        | Custom of Exercise list list
 
-      type WorkoutPlan = {
-          CycleType: Cycle
-          Exercises: (Exercise * ExercisePolicy) list
-      }
-#+end_src
+    type Cycle =
+        | Weekly of int // number of day a week
+        | RoundRobin of int // number of days in cycle
 
-#+RESULTS:
-: WeightLevel: WeightLevel
-:   ---------------------^^^^^^^^^^^
-:
-: /home/jz/SideProjects/sharp-my-giraffe/HelloWorldHttpAPI/stdin(31,22): error FS0039: The type 'WeightLevel' is not defined. Maybe you want one of the following:
-:    WeightValue
+    type ExercisePolicy =
+        | ThreeOfFive
+        | FiveThreeOneSingleSetCycle
+        | ThreeOfEight
+        | Custom of (ExerciseWeightLevel * RepCount) list
 
-* Domain Services
+    type WorkoutPlan = {
+        CycleType: Cycle
+        Exercises: (Exercise * ExercisePolicy) list
+    }
 
-#+begin_src fsharp :tangle "Domain.fs"
-  module Services =
-      open Workout
-      open AppUser
-
-      type CreateUserRequest = {
-            FirstName: string
-            LastName: string
-            Email: string
-      }
-
-      type DeleteUserRequest = { Email: string }
-
-      type UserService = {
-          getUser: string -> Result<AppUser, AppError>
-          deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
-          listUsers: unit -> Result<AppUser list, AppError>
-          createUser: CreateUserRequest -> Result<AppUser, AppError>
-      }
-      type UserRoutineService = {
-          getRoutines: Email -> WorkoutExercise[]
-          getTodaysRoutine: Email -> WorkoutExercise
-          addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
-      }
-#+end_src
-
-* Midleware Services
-
-#+begin_src fsharp :tangle "Domain.fs"
-  module Authentication =
-
-      open AppUser
-
-      type Password = string
-
-      type AuthenticationService = {
-          login: Email -> Password -> AppResponse<Session>
-          logout: Session -> AppResponse<unit>
-      }
-
-  module Authorization =
-
-      open AppUser
-
-      type Role =
-          | Admin
-          | Staff
-          | Athlete
-
-      type Permission =
-          | CanManageWorkoutData
-          | CanManageUsers
-
-      type AuthorizationService = {
-          hasPermission: Permission -> Email -> AppResponse<bool>
-          grantRole: Role -> Email -> AppResponse<bool>
-          removeRole: Role -> Email -> AppResponse<bool>
-          grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
-      }
+    type UserAppData = {
+        WorkoutPlans: WorkoutPlan list
+        ActiveWorkoutPlan: WorkoutPlan
+        BodyweightHistory: (DateTime * WeightValue) list
+    }
 #+end_src

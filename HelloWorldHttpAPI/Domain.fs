@@ -13,18 +13,25 @@ type AppError =
     | RoutineNotFound
     | UserNotFound
 
-type AppResponse<'T> = Result<'T, AppError>
+type AppResponse<'T> = Async<Result<'T, AppError>>
 
 module AppUser =
 
     type Email = string
     type PersonName = string
+    type ThemePreference =
+        | White
+        | Dark
+    type WeightUnit = | Kilogram | Pound
 
     type AppUser = {
         FirstName: PersonName
         LastName: PersonName
         Email: Email // Primary Key
         CreatedAt: DateTime
+        Birthdate: DateTime
+        ThemePreference: ThemePreference
+        WeightUnitPreference: WeightUnit
     }
 
     type Session = {
@@ -34,6 +41,7 @@ module AppUser =
     }
 
 module Workout =
+    open System
 
     type RepCount = int
 
@@ -53,7 +61,16 @@ module Workout =
         VideoTutorial: string option
     }
 
+    type AppExerciseDatabase = Exercise list
+
     type Comment = string
+    type Video = string // TODO
+    type Picture = string // TODO
+
+    type Attachment =
+        | Comment of Comment
+        | Video of Video
+        | Picture of Picture
 
     type ExerciseSetState =
         | NotTried
@@ -63,8 +80,9 @@ module Workout =
     type ExerciseSet = {
         Reps: RepCount
         TargetWeight: WeightValue
-        WeightLevel: WeightLevel
+        WeightLevel: ExerciseWeightLevel
         Status: ExerciseSetState
+        Attachments: Attachment list
     }
 
     // Example: 3 sets: 5 reps of 5RM, 4 reps of 3RM, 1 rep of 1RM
@@ -102,57 +120,8 @@ module Workout =
         Exercises: (Exercise * ExercisePolicy) list
     }
 
-module Services =
-    open Workout
-    open AppUser
-
-    type CreateUserRequest = {
-          FirstName: string
-          LastName: string
-          Email: string
-    }
-
-    type DeleteUserRequest = { Email: string }
-
-    type UserService = {
-        getUser: string -> Result<AppUser, AppError>
-        deleteUser: DeleteUserRequest -> Result<AppUser, AppError>
-        listUsers: unit -> Result<AppUser list, AppError>
-        createUser: CreateUserRequest -> Result<AppUser, AppError>
-    }
-    type UserRoutineService = {
-        getRoutines: Email -> WorkoutExercise[]
-        getTodaysRoutine: Email -> WorkoutExercise
-        addRoutine: Email -> WorkoutExercise -> AppResponse<unit>
-    }
-
-module Authentication =
-
-    open AppUser
-
-    type Password = string
-
-    type AuthenticationService = {
-        login: Email -> Password -> AppResponse<Session>
-        logout: Session -> AppResponse<unit>
-    }
-
-module Authorization =
-
-    open AppUser
-
-    type Role =
-        | Admin
-        | Staff
-        | Athlete
-
-    type Permission =
-        | CanManageWorkoutData
-        | CanManageUsers
-
-    type AuthorizationService = {
-        hasPermission: Permission -> Email -> AppResponse<bool>
-        grantRole: Role -> Email -> AppResponse<bool>
-        removeRole: Role -> Email -> AppResponse<bool>
-        grantPermissionToRole: Permission -> Role -> bool -> AppResponse<bool>
+    type UserAppData = {
+        WorkoutPlans: WorkoutPlan list
+        ActiveWorkoutPlan: WorkoutPlan
+        BodyweightHistory: (DateTime * WeightValue) list
     }
