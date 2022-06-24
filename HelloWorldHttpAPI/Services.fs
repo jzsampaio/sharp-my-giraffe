@@ -1,7 +1,8 @@
-module HelloWorldHttpAPI.Services
+module App.Services
 
 open System
-open HelloWorldHttpAPI.Domain
+open App.Types
+open App.Types.Domain
 
 module DomainServices =
 
@@ -43,6 +44,12 @@ module Authentication =
     open AppUser
 
     type Password = string
+
+    type Session = {
+        UserEmail: Email
+        LoggedAt: DateTime
+        TimeToLive: TimeSpan
+    }
 
     type AuthenticationService = {
         login: Email -> Password -> AppResponse<Session>

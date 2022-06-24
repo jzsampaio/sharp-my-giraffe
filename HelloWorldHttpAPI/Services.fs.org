@@ -6,10 +6,11 @@ another for the web app to work.
 Think of this file as a signature file, but build w/ org-mode.
 
 #+begin_src fsharp :tangle "Services.fs"
-module HelloWorldHttpAPI.Services
+module App.Services
 
 open System
-open HelloWorldHttpAPI.Domain
+open App.Types
+open App.Types.Domain
 #+end_src
 
 * Domain Services
@@ -64,6 +65,12 @@ module Authentication =
     open AppUser
 
     type Password = string
+
+    type Session = {
+        UserEmail: Email
+        LoggedAt: DateTime
+        TimeToLive: TimeSpan
+    }
 
     type AuthenticationService = {
         login: Email -> Password -> AppResponse<Session>
