@@ -7,10 +7,13 @@
   <ItemGroup>
     <Compile Include="Domain.fs" />
     <Compile Include="Services.fs" />
+    <Compile Include="Events.fs" />
+    <Compile Include="DTO.HTTP.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="3.0.0-beta007" />
     <PackageReference Include="Giraffe" Version="6.0.0" />
   </ItemGroup>
 

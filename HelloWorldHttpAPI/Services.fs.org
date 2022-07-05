@@ -5,11 +5,15 @@ another for the web app to work.
 
 Think of this file as a signature file, but build w/ org-mode.
 
+Also, types that are to be exposed to the public HTTP API can only be
+the basic json types: string, number, object, array, boolean, and
+null.
+
 #+begin_src fsharp :tangle "Services.fs"
-module App.Services
+module App.Types.Services
 
 open System
-open App.Types
+open App.Types.Global
 open App.Types.Domain
 #+end_src
 
@@ -19,24 +23,18 @@ This section is dedicated to services that manipulate the key domain
 entities.
 
 #+begin_src fsharp :tangle "Services.fs"
+
 module DomainServices =
 
-    open Workout
-    open AppUser
-
-    type CreateUserRequest = {
-          FirstName: string
-          LastName: string
-          Email: string
-    }
-
-    type DeleteUserRequest = { Email: string }
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.Workout
+    open App.Types.Domain.AppUser
 
     type UserService = {
-        getUser: string -> AppResponse<AppUser>
-        deleteUser: DeleteUserRequest -> AppResponse<AppUser>
+        getUser: Email -> AppResponse<AppUser>
+        deleteUser: Email -> AppResponse<AppUser>
         listUsers: unit -> AppResponse<AppUser list>
-        createUser: CreateUserRequest -> AppResponse<AppUser>
+        createUser: AppUser -> AppResponse<AppUser>
     }
 
     type RoutineService = {
@@ -59,10 +57,13 @@ module DomainServices =
 
 This section is dedicated to auxiliary services.
 
+** Authentication
+
 #+begin_src fsharp :tangle "Services.fs"
 module Authentication =
 
-    open AppUser
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.AppUser
 
     type Password = string
 
@@ -76,10 +77,15 @@ module Authentication =
         login: Email -> Password -> AppResponse<Session>
         logout: Session -> AppResponse<unit>
     }
+#+end_src
 
+** Authorization
+
+#+begin_src fsharp :tangle "Services.fs"
 module Authorization =
 
-    open AppUser
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.AppUser
 
     type Role =
         | Admin

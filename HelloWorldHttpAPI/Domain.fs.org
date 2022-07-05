@@ -5,37 +5,56 @@ have a mobile app that:
 
 - Keeps track of my exercises (# reps, sets, ...)
 - Predicts what exercise I will do next based on known policies
+- Allows me to store videos and pictures
 
 * App.Types
 
 #+begin_src fsharp :tangle "Domain.fs"
-module App.Types
+namespace App.Types
 
 open System
 #+end_src
 
-** Top Level Definitions (App Errors, and Return Type)
+** Errors
 
-Below are listed all possible application errors.
+Below are listed all possible application errors. This list is
+expected to grow a lot as the app evolves.
 
 #+begin_src fsharp :tangle "Domain.fs"
-type AuthError =
-    | InvalidCredentials
-    | NotAuthorized
-
-type AppError =
-    | AuthError of AuthError
-    | UserAlreadyExists
-    | RoutineAlreadyExists
-    | RoutineNotFound
-    | UserNotFound
+module Errors =
+    type AuthError =
+        | InvalidCredentials
+        | NotAuthorized
+    
+    type DetailedDomainParsingError = {
+        Field: string
+        Value: string
+        Comment: string option
+    }
+    
+    type DomainParsingError =
+        | DetailedDomainParsingError of DetailedDomainParsingError
+        | SimpleError of string
+    
+    type AppError =
+        | AuthError of AuthError
+        | UserAlreadyExists
+        | RoutineAlreadyExists
+        | RoutineNotFound
+        | UserNotFound
+        | DomainParsingError of DomainParsingError list
 #+end_src
 
-On this design, all functions that can produce errors are expected to
-return the following type.
+All functions that can produce errors are expected to return the
+following type.
+
+** Global
 
 #+begin_src fsharp :tangle "Domain.fs"
-type AppResponse<'T> = Async<Result<'T, AppError>>
+module Global =
+    open Errors
+    
+    type AppResponse<'T> = Async<Result<'T, AppError>>
 #+end_src
 
 With this approach, we can make uniform use for ~asyncresult~ around
@@ -48,7 +67,38 @@ within and ~asyncresult~ CE.
 #+begin_src fsharp :tangle "Domain.fs"
 module Domain =
 #+end_src
-*** User
+
+*** Primitive Definitions
+
+#+begin_src fsharp :tangle "Domain.fs"
+
+    module Primitives =
+
+        open Errors
+        
+        type Email =
+            | Email of string
+            static member ofPrimitive =
+                function
+                    | null | "" -> Error (SimpleError "Email cannot be empty")
+                    | s -> Ok (Email s)
+            member this.toPrimitive () =
+                match this with | Email s -> s
+            member this.toString () =
+                match this with | Email s -> sprintf "Email: %s" s
+                                
+        type PersonName =
+            | PersonName of string
+            static member ofPrimitive =
+                function
+                    | null | "" -> Error (SimpleError "Person name cannot be empty")
+                    | s -> Ok (PersonName s)
+            member this.toPrimitive () =
+                match this with | PersonName s -> s
+            member this.toString () =
+                match this with | PersonName s -> sprintf "PersonName: %s" s
+#+end_src
+*** App User
 
 Before accessing the app, a user must be logged in.
 
@@ -59,25 +109,40 @@ authentication (e.g.: gmail, github, ...).
 
 #+begin_src fsharp :tangle "Domain.fs"
     module AppUser =
-        type Email = string
-        type PersonName = string
-        type ThemePreference =
-            | White
-            | Dark
-        type WeightUnit = | Kilogram | Pound
 
+        open Primitives
+        
         type AppUser = {
             Email: Email
             FirstName: PersonName
             LastName: PersonName
-            CreatedAt: DateTime
-            Birthdate: DateTime
-            ThemePreference: ThemePreference
-            WeightUnitPreference: WeightUnit
+            BirthDate: DateTime
         }
 #+end_src
+*** App Configuration
 
-*** Workout Routine
+This section describes app configurations which are local to the user.
+
+#+begin_src fsharp :tangle "Domain.fs"
+    module AppConfig =
+        type ThemePreference =
+            | White
+            | Dark
+        type WeightUnit = | Kilogram | Pound
+        type Timezone = | Timezone // TODO
+
+        type UserAppConfig =
+            { ThemePreference: ThemePreference
+              WeightUnitPreference: WeightUnit
+              Timezone: Timezone }
+            static member defaultValue =
+                { ThemePreference = White
+                  WeightUnitPreference = Kilogram
+                  Timezone = Timezone }
+
+#+end_src
+
+*** Workout
 
 This is an app for workout routines. The key concepts are presented
 below.
@@ -118,8 +183,29 @@ below.
         }
 
         type Comment = | Comment of string
-        type Video = | Video of string // TODO
-        type Picture = | Picture of string // TODO
+
+        type VideoFormat =
+            | Mp4
+
+        type ImageFormat =
+            | PNG
+            | Bitmap
+
+        type Picture = {
+            Format: ImageFormat
+            RawContent: byte array
+            Resolution: int * int
+            FileName: string
+            Thumbnail: Picture option
+        }
+        
+        type Video = {
+            Format: VideoFormat
+            RawContent: byte array
+            FileName: string
+            Duration: double
+            Thumbnail: Picture option
+        }
 
         type Attachment =
             | Comment of Comment
@@ -179,8 +265,10 @@ below.
 
 #+begin_src fsharp :tangle "Domain.fs"
 module AppData =
+    open Domain.Primitives    
     open Domain.Workout
     open Domain.AppUser
+    open Domain.AppConfig
 
     type UserAppData = {
         WorkoutSessions: WorkoutSession list
@@ -192,7 +280,7 @@ module AppData =
     }
 
     type AppData = {
-        UserData: Map<Email, (AppUser * UserAppData)>
+        UserData: Map<Email, (AppUser * UserAppData * UserAppConfig)>
         SystemData: Map<ExerciseName, Exercise>
     }
 #+end_src

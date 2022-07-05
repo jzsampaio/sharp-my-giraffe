@@ -34,7 +34,14 @@ let readHandler = handleContext(
         let s = counter.PostAndReply(fun c -> Fetch c)
         return! ctx.WriteJsonAsync s
     })
-    
+
+let parsingError (err : string) = RequestErrors.BAD_REQUEST err
+
+let _createUserHandler request =
+    Successful.OK request
+
+let createUserHandler = tryBindForm<App.Types.DTO.HTTP.AppUserDTO.CreateUserRequest> parsingError None _createUserHandler
+
 let webApp =
     choose [
        route "/counter" >=>
@@ -42,6 +49,11 @@ let webApp =
                POST >=> incrHandler
                GET >=> readHandler
                ]
+       route "/user" >=>
+           choose [
+               POST >=> createUserHandler
+               ]
+
     ]
 
 let configureApp  (app: IApplicationBuilder) =

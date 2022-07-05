@@ -1,27 +1,20 @@
-module App.Services
+module App.Types.Services
 
 open System
-open App.Types
+open App.Types.Global
 open App.Types.Domain
 
 module DomainServices =
 
-    open Workout
-    open AppUser
-
-    type CreateUserRequest = {
-          FirstName: string
-          LastName: string
-          Email: string
-    }
-
-    type DeleteUserRequest = { Email: string }
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.Workout
+    open App.Types.Domain.AppUser
 
     type UserService = {
-        getUser: string -> AppResponse<AppUser>
-        deleteUser: DeleteUserRequest -> AppResponse<AppUser>
+        getUser: Email -> AppResponse<AppUser>
+        deleteUser: Email -> AppResponse<AppUser>
         listUsers: unit -> AppResponse<AppUser list>
-        createUser: CreateUserRequest -> AppResponse<AppUser>
+        createUser: AppUser -> AppResponse<AppUser>
     }
 
     type RoutineService = {
@@ -41,7 +34,8 @@ module DomainServices =
 
 module Authentication =
 
-    open AppUser
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.AppUser
 
     type Password = string
 
@@ -58,7 +52,8 @@ module Authentication =
 
 module Authorization =
 
-    open AppUser
+    open App.Types.Domain.Primitives
+    open App.Types.Domain.AppUser
 
     type Role =
         | Admin

@@ -1,0 +1,44 @@
+#+TITLE: HTTP Data Transfer Objects
+
+These files describes the types used for binding data on HTTP requests
+into F# records.
+
+Coming from HTTP, the types to be bound can use only primitive JSON
+types: string, number, array, and object. Additionally, it is possible
+to bind DateTime.
+
+These DTO types are expected to convert into domain types.
+
+#+begin_src fsharp :tangle "DTO.HTTP.fs"
+module App.Types.DTO.HTTP
+
+open App.Types.Domain.AppUser
+
+module AppUserDTO =
+
+    open App.Types.Events
+    open App.Types.Domain.Primitives
+    open FsToolkit.ErrorHandling
+    open System
+
+    [<CLIMutable>]
+    type CreateUserRequest =
+        { Email: string
+          FirstName: string
+          LastName: string
+          BirthDate: string }
+          member this.toDomainEvent () =
+              result {
+                  let! email = Email.ofPrimitive this.Email
+                  let! firstName = PersonName.ofPrimitive this.FirstName
+                  let! lastName = PersonName.ofPrimitive this.LastName
+                  let bday = DateTime.Parse this.BirthDate
+                  return ({ Email = email
+                            FirstName = firstName
+                            LastName = lastName
+                            BirthDate = bday }: AppUser)
+                         |> AppEvent.newEvent
+                         |> CreateUser
+              }
+    
+#+end_src

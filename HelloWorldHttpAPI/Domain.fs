@@ -1,39 +1,89 @@
-module App.Types
+namespace App.Types
 
 open System
 
-type AuthError =
-    | InvalidCredentials
-    | NotAuthorized
+module Errors =
+    type AuthError =
+        | InvalidCredentials
+        | NotAuthorized
+    
+    type DetailedDomainParsingError = {
+        Field: string
+        Value: string
+        Comment: string option
+    }
+    
+    type DomainParsingError =
+        | DetailedDomainParsingError of DetailedDomainParsingError
+        | SimpleError of string
+    
+    type AppError =
+        | AuthError of AuthError
+        | UserAlreadyExists
+        | RoutineAlreadyExists
+        | RoutineNotFound
+        | UserNotFound
+        | DomainParsingError of DomainParsingError list
 
-type AppError =
-    | AuthError of AuthError
-    | UserAlreadyExists
-    | RoutineAlreadyExists
-    | RoutineNotFound
-    | UserNotFound
-
-type AppResponse<'T> = Async<Result<'T, AppError>>
+module Global =
+    open Errors
+    
+    type AppResponse<'T> = Async<Result<'T, AppError>>
 
 module Domain =
 
-    module AppUser =
-        type Email = string
-        type PersonName = string
-        type ThemePreference =
-            | White
-            | Dark
-        type WeightUnit = | Kilogram | Pound
+    module Primitives =
 
+        open Errors
+        
+        type Email =
+            | Email of string
+            static member ofPrimitive =
+                function
+                    | null | "" -> Error (SimpleError "Email cannot be empty")
+                    | s -> Ok (Email s)
+            member this.toPrimitive () =
+                match this with | Email s -> s
+            member this.toString () =
+                match this with | Email s -> sprintf "Email: %s" s
+                                
+        type PersonName =
+            | PersonName of string
+            static member ofPrimitive =
+                function
+                    | null | "" -> Error (SimpleError "Person name cannot be empty")
+                    | s -> Ok (PersonName s)
+            member this.toPrimitive () =
+                match this with | PersonName s -> s
+            member this.toString () =
+                match this with | PersonName s -> sprintf "PersonName: %s" s
+
+    module AppUser =
+
+        open Primitives
+        
         type AppUser = {
             Email: Email
             FirstName: PersonName
             LastName: PersonName
-            CreatedAt: DateTime
-            Birthdate: DateTime
-            ThemePreference: ThemePreference
-            WeightUnitPreference: WeightUnit
+            BirthDate: DateTime
         }
+
+    module AppConfig =
+        type ThemePreference =
+            | White
+            | Dark
+        type WeightUnit = | Kilogram | Pound
+        type Timezone = | Timezone // TODO
+
+        type UserAppConfig =
+            { ThemePreference: ThemePreference
+              WeightUnitPreference: WeightUnit
+              Timezone: Timezone }
+            static member defaultValue =
+                { ThemePreference = White
+                  WeightUnitPreference = Kilogram
+                  Timezone = Timezone }
 
     module Workout =
         open System
@@ -59,8 +109,29 @@ module Domain =
         }
 
         type Comment = | Comment of string
-        type Video = | Video of string // TODO
-        type Picture = | Picture of string // TODO
+
+        type VideoFormat =
+            | Mp4
+
+        type ImageFormat =
+            | PNG
+            | Bitmap
+
+        type Picture = {
+            Format: ImageFormat
+            RawContent: byte array
+            Resolution: int * int
+            FileName: string
+            Thumbnail: Picture option
+        }
+        
+        type Video = {
+            Format: VideoFormat
+            RawContent: byte array
+            FileName: string
+            Duration: double
+            Thumbnail: Picture option
+        }
 
         type Attachment =
             | Comment of Comment
@@ -116,8 +187,10 @@ module Domain =
         }
 
 module AppData =
+    open Domain.Primitives    
     open Domain.Workout
     open Domain.AppUser
+    open Domain.AppConfig
 
     type UserAppData = {
         WorkoutSessions: WorkoutSession list
@@ -129,6 +202,6 @@ module AppData =
     }
 
     type AppData = {
-        UserData: Map<Email, (AppUser * UserAppData)>
+        UserData: Map<Email, (AppUser * UserAppData * UserAppConfig)>
         SystemData: Map<ExerciseName, Exercise>
     }

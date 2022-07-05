@@ -58,8 +58,8 @@ looks like.
           | _ -> None
 
   let choose handlers ctx =
-    
-    
+
+
 
   let ctx = {
       Headers = ["content:html"]
@@ -137,7 +137,7 @@ Giraffe has many routing handlers.
 | routePorts        | route based on port of the http request                      |
 
 
-* Things To Checkout Foreign
+* Things To Checkout
 
 - [ ] static files
 - [ ] authentication
@@ -147,9 +147,7 @@ Giraffe has many routing handlers.
 - [ ] logging
 - [ ] simply being able to retrieve information from the current
   hosting environment
-  
+
 * Question
 
 ** What is Kestrel?
-
-** 
