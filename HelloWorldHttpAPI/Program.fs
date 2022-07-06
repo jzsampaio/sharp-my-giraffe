@@ -5,50 +5,65 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.AspNetCore.Http
 open Giraffe
+open FsToolkit.ErrorHandling
 
-let time () = System.DateTime.Now.ToString()
+open App.Types.Events
+open App.Types.AppData
+open App.Types.Domain
+open App.Types.Errors
+open App.Types.DTO.HTTP
 
-type msg =
-    | Incr of int
-    | Fetch of AsyncReplyChannel<int>
+// TODO simulate async mechanisms
+// TODO something about this operation should rely on dotnet dependency injection
+// This is the function that updates the in-memory state
+let createNewUser appData (appUser: App.Types.Domain.AppUser.AppUser) =
+    match Map.tryFind appUser.Email appData.UserData with
+        | None ->
+            let newUserData =
+                Map.add appUser.Email (appUser, UserAppData.empty, AppConfig.UserAppConfig.defaultValue) appData.UserData
+            printfn "User created!"
+            { appData with UserData = newUserData }
+            |> Ok
+        | Some _ ->
+            Error UserAlreadyExists
 
-let counter =
+// TODO simulate a synchronous API call
+// This is the mailbox processor
+let backendTaskQueue =
     MailboxProcessor.Start(fun inbox ->
-        let rec loop n =
+        let rec loop appData =
             async { let! msg = inbox.Receive()
                     match msg with
-                    | Incr(x) -> return! loop(n + x)
-                    | Fetch(replyChannel) ->
-                        replyChannel.Reply(n)
-                        return! loop(n) }
-        loop 0)
-
-let incrHandler = handleContext(
-    fun ctx -> task {
-        counter.Post(Incr 1)
-        return Some ctx
-    })
-
-let readHandler = handleContext(
-    fun ctx -> task {
-        let s = counter.PostAndReply(fun c -> Fetch c)
-        return! ctx.WriteJsonAsync s
-    })
+                    | CreateUser e ->
+                        let newState =
+                            match createNewUser appData e.Data with
+                                | Ok newAppData -> newAppData
+                                | Error err ->
+                                    printfn "Error: %A" err
+                                    appData
+                        return! (loop newState)
+                    | e ->
+                        printfn "Not Implemented! %A" e
+                        return! loop appData }
+        loop AppData.empty)
 
 let parsingError (err : string) = RequestErrors.BAD_REQUEST err
 
-let _createUserHandler request =
-    Successful.OK request
+// this is the handler for the HTTP API
+let _createUserHandler (request: AppUserDTO.CreateUserRequest) : HttpHandler =
+    fun next ctx ->
+        match request.toDomainEvent() with
+            | Ok ev ->
+                backendTaskQueue.Post ev
+                // TODO what should the handler return?
+                Successful.NO_CONTENT next ctx
+            | Error err ->
+                RequestErrors.BAD_REQUEST (sprintf "Error: %A" err) next ctx
 
-let createUserHandler = tryBindForm<App.Types.DTO.HTTP.AppUserDTO.CreateUserRequest> parsingError None _createUserHandler
+let createUserHandler = tryBindForm<AppUserDTO.CreateUserRequest> parsingError None _createUserHandler
 
 let webApp =
     choose [
-       route "/counter" >=>
-           choose [
-               POST >=> incrHandler
-               GET >=> readHandler
-               ]
        route "/user" >=>
            choose [
                POST >=> createUserHandler

@@ -136,7 +136,6 @@ Giraffe has many routing handlers.
 | subRoutef         | subroute + capture url parameters                            |
 | routePorts        | route based on port of the http request                      |
 
-
 * Things To Checkout
 
 - [ ] static files
@@ -151,3 +150,35 @@ Giraffe has many routing handlers.
 * Question
 
 ** What is Kestrel?
+* Project Log
+** <2022-07-05 ter>
+
+I improved further the type definitions.
+
+I am breaking the types into:
+
+- Domain
+    * Global
+    * Error
+    * Primitives :: used to define Users, Workout, ...
+    * User
+    * Workout
+- Events :: written in terms of the domain types. I plan to add these
+  to queue system.
+- Http DTO :: these are what the HTTP layer receives and bind. These
+  types should not be processed directly. Instead, they should first
+  be converted into Events.
+- RDMBS DTO
+- Services :: the controllers that must be implemented for this
+  application to work. They should make references to the domain types
+  only
+
+Points for investigation:
+
+- I am still figuring out the best way to bind. Giraffe provides a few options:
+    * ~tryBindForm~ and ~tryBindQuery~. These 2 produces failures in
+      case of missing fields. However, these don't automatically
+      support multiple input formats.
+    * ~bindModel~ can parse multiple http payloads (json, xlm, form,
+      and query string). The problem is that it will infer null for
+      non defined fields.

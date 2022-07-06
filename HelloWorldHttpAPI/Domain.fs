@@ -6,17 +6,17 @@ module Errors =
     type AuthError =
         | InvalidCredentials
         | NotAuthorized
-    
+
     type DetailedDomainParsingError = {
         Field: string
         Value: string
         Comment: string option
     }
-    
+
     type DomainParsingError =
         | DetailedDomainParsingError of DetailedDomainParsingError
         | SimpleError of string
-    
+
     type AppError =
         | AuthError of AuthError
         | UserAlreadyExists
@@ -27,7 +27,7 @@ module Errors =
 
 module Global =
     open Errors
-    
+
     type AppResponse<'T> = Async<Result<'T, AppError>>
 
 module Domain =
@@ -35,7 +35,7 @@ module Domain =
     module Primitives =
 
         open Errors
-        
+
         type Email =
             | Email of string
             static member ofPrimitive =
@@ -46,7 +46,7 @@ module Domain =
                 match this with | Email s -> s
             member this.toString () =
                 match this with | Email s -> sprintf "Email: %s" s
-                                
+
         type PersonName =
             | PersonName of string
             static member ofPrimitive =
@@ -61,7 +61,7 @@ module Domain =
     module AppUser =
 
         open Primitives
-        
+
         type AppUser = {
             Email: Email
             FirstName: PersonName
@@ -124,7 +124,7 @@ module Domain =
             FileName: string
             Thumbnail: Picture option
         }
-        
+
         type Video = {
             Format: VideoFormat
             RawContent: byte array
@@ -187,21 +187,30 @@ module Domain =
         }
 
 module AppData =
-    open Domain.Primitives    
+    open Domain.Primitives
     open Domain.Workout
     open Domain.AppUser
     open Domain.AppConfig
 
-    type UserAppData = {
-        WorkoutSessions: WorkoutSession list
-        ActiveWorkoutSession: WorkoutSession option
-        WorkoutPlans: WorkoutPlan list
-        ActiveWorkoutPlan: WorkoutPlan option
-        BodyweightHistory: (DateTime * WeightValue) list
-        ExerciseDatabase: Exercise list
-    }
+    type UserAppData =
+        { WorkoutSessions: WorkoutSession list
+          ActiveWorkoutSession: WorkoutSession option
+          WorkoutPlans: WorkoutPlan list
+          ActiveWorkoutPlan: WorkoutPlan option
+          BodyweightHistory: (DateTime * WeightValue) list
+          ExerciseDatabase: Exercise list }
+          static member empty =
+              { WorkoutSessions = List.empty
+                ActiveWorkoutSession = None
+                WorkoutPlans = List.empty
+                ActiveWorkoutPlan = None
+                BodyweightHistory = List.empty
+                ExerciseDatabase = List.empty }
 
-    type AppData = {
-        UserData: Map<Email, (AppUser * UserAppData * UserAppConfig)>
-        SystemData: Map<ExerciseName, Exercise>
-    }
+
+    type AppData =
+        { UserData: Map<Email, (AppUser * UserAppData * UserAppConfig)>
+          SystemData: Map<ExerciseName, Exercise> }
+          static member empty =
+              { UserData = Map.empty
+                SystemData = Map.empty }
